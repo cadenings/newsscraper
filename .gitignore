@@ -1,0 +1,14 @@
+# Secrets — never commit real Supabase credentials
+.env
+
+# Legacy local database (the tool now stores data in Supabase, not here)
+finance_news.db
+
+# Generated output
+news_report_*.html
+news_report_*.txt
+news_export.*
+
+# Python
+__pycache__/
+*.pyc

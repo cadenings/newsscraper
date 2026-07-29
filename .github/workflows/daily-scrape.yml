@@ -1,0 +1,63 @@
+name: Daily macro news scrape
+
+on:
+  schedule:
+    # 12:00 UTC daily = 8:00am EDT / 7:00am EST. Edit the cron to taste
+    # (GitHub Actions cron times are always UTC. GitHub also doesn't guarantee
+    # the exact minute during high load — expect it to fire within a window
+    # around this time, not to the second).
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+# Needed so the "record status" step below can commit STATUS.md back to the
+# repo (see note there for why that matters).
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scrape latest headlines into Supabase
+        run: python finance_news.py scrape
+
+      - name: Prune data older than 90 days (keeps free-tier storage in check)
+        run: python finance_news.py prune --hours 2160
+
+      - name: Record last-run status
+        run: |
+          {
+            echo "# Last successful run"
+            echo ""
+            echo "$(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo '```'
+            python finance_news.py stats
+            echo '```'
+          } > STATUS.md
+
+      # GitHub auto-disables a scheduled workflow after 60 days with no
+      # repo activity (scrape/prune only touch Supabase, not this repo, so
+      # without this the schedule would eventually go quiet with no warning).
+      # Committing STATUS.md here keeps the repo active AND doubles as a
+      # one-glance "is this actually running?" check — open STATUS.md on
+      # GitHub any time to see the last run's timestamp and stats.
+      - name: Commit status file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add STATUS.md
+          git diff --staged --quiet || git commit -m "Daily run: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

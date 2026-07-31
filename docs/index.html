@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance News</title>
+<meta name="description" content="Macro-indicative financial headlines, last 24h, ranked by recency.">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ── Theme ─────────────────────────────────────────────────────────── */
+  :root {
+    --bg: #f7f6f3;
+    --panel: #ffffff;
+    --text: #1a1a1a;
+    --text-muted: #5a5a5a;
+    --text-faint: #8a8a8a;
+    --border: #e2e0da;
+    --accent: #0645ad;
+    --shadow: rgba(0, 0, 0, 0.06);
+    --chip-bg: #eeece5;
+    --chip-bg-active: #1a1a1a;
+    --chip-text-active: #ffffff;
+    --error-bg: #fdecec;
+    --error-border: #e6a4a4;
+    --error-text: #8a1f1f;
+  }
+  :root[data-theme="dark"] {
+    --bg: #15161a;
+    --panel: #1d1e23;
+    --text: #eceae4;
+    --text-muted: #a8a6a0;
+    --text-faint: #75736e;
+    --border: #2e2f35;
+    --accent: #7aa2f7;
+    --shadow: rgba(0, 0, 0, 0.35);
+    --chip-bg: #26272d;
+    --chip-bg-active: #eceae4;
+    --chip-text-active: #15161a;
+    --error-bg: #2a1a1a;
+    --error-border: #6b2c2c;
+    --error-text: #f0a0a0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15161a;
+      --panel: #1d1e23;
+      --text: #eceae4;
+      --text-muted: #a8a6a0;
+      --text-faint: #75736e;
+      --border: #2e2f35;
+      --accent: #7aa2f7;
+      --shadow: rgba(0, 0, 0, 0.35);
+      --chip-bg: #26272d;
+      --chip-bg-active: #eceae4;
+      --chip-text-active: #15161a;
+      --error-bg: #2a1a1a;
+      --error-border: #6b2c2c;
+      --error-text: #f0a0a0;
+    }
+  }
+
+  /* Per-category accent colors — same across light/dark */
+  :root {
+    --c-central-bank: #3b5bdb;
+    --c-data: #0f9488;
+    --c-economy: #8b5cf6;
+    --c-markets: #16a34a;
+    --c-wire: #64748b;
+    --c-global: #ea580c;
+    --c-business: #db2777;
+    --c-other: #78716c;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    margin: 0;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+
+  /* ── Header ────────────────────────────────────────────────────────── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 18px 20px 14px;
+  }
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .status {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .status .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    margin-right: 5px;
+  }
+  .status.error .dot { background: #dc2626; }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    align-items: center;
+  }
+  .toolbar select,
+  .toolbar input[type="search"] {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 7px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+  }
+  .toolbar input[type="search"] {
+    flex: 1;
+    min-width: 160px;
+  }
+  .icon-btn {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 7px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .icon-btn:hover { border-color: var(--accent); }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .chip {
+    font-size: 0.78rem;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--chip-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    border: 1px solid transparent;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--border); }
+  .chip.active {
+    background: var(--chip-bg-active);
+    color: var(--chip-text-active);
+  }
+
+  /* ── Main ──────────────────────────────────────────────────────────── */
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 20px 60px;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 30px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-heading:first-child { margin-top: 4px; }
+  .section-heading .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .section-heading h2 {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+    color: var(--text);
+  }
+  .section-heading .count {
+    color: var(--text-faint);
+    font-size: 0.8rem;
+  }
+
+  .item {
+    padding: 12px 0 12px 14px;
+    border-left: 3px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .item + .item { border-top: 1px solid var(--border); }
+  .item .meta {
+    font-size: 0.76rem;
+    color: var(--text-faint);
+    margin-bottom: 3px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .item .meta .src { font-weight: 600; color: var(--text-muted); }
+  .item .headline {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.05rem;
+    line-height: 1.4;
+  }
+  .item .headline a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .item .headline a:hover { color: var(--accent); text-decoration: underline; }
+  .item .summary {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .empty, .loading {
+    text-align: center;
+    color: var(--text-faint);
+    padding: 60px 20px;
+    font-size: 0.95rem;
+  }
+
+  .error-box {
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    color: var(--error-text);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .error-box code {
+    background: rgba(0,0,0,0.12);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    color: var(--text-faint);
+    font-size: 0.76rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="title-row">
+      <h1>Finance News</h1>
+      <span class="status" id="status"><span class="dot"></span>Loading…</span>
+    </div>
+    <div class="toolbar">
+      <select id="hoursSelect">
+        <option value="24">Last 24h</option>
+        <option value="48">Last 48h</option>
+        <option value="72">Last 3 days</option>
+        <option value="168">Last 7 days</option>
+      </select>
+      <input type="search" id="searchBox" placeholder="Search headlines…">
+      <button class="icon-btn" id="refreshBtn" title="Refresh">↻ Refresh</button>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme">◐</button>
+    </div>
+    <div class="chips" id="categoryChips"></div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="loading">Loading headlines…</div>
+</main>
+
+<footer>
+  Not investment advice — informational only. Data via Supabase, refreshed daily.
+</footer>
+
+<script>
+// ── Configuration ───────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://rdbacvpzilkrdfmzbeuw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkYmFjdnB6aWxrcmRmbXpiZXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDM1OTMsImV4cCI6MjEwMDg3OTU5M30.5UGf3zzpzCatf98Crds0dZndbxy8bnG09pzBFFSpWl8"; // anon/publishable key — safe to be public, read-only via RLS
+
+// ── Category metadata (mirrors finance_news.py) ─────────────────────────────
+const CATEGORY_ORDER = ["central-bank", "data", "economy", "markets", "wire", "global", "business"];
+const CATEGORY_LABELS = {
+  "central-bank": "Central Banks & Policy",
+  "data": "Official Data Releases",
+  "economy": "Economy",
+  "markets": "Markets",
+  "wire": "Wires & Top-Tier Press",
+  "global": "Global / Non-US",
+  "business": "Business",
+};
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ────────────────────────────────────────────────────────────────────
+let allRows = [];
+let activeCategory = null; // null = all
+let searchTerm = "";
+
+// ── Theme toggle ─────────────────────────────────────────────────────────────
+const root = document.documentElement;
+const themeBtn = document.getElementById("themeBtn");
+function applyStoredTheme() {
+  const stored = localStorage.getItem("theme");
+  if (stored) root.setAttribute("data-theme", stored);
+}
+themeBtn.addEventListener("click", () => {
+  const current = root.getAttribute("data-theme") ||
+    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = current === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+});
+applyStoredTheme();
+
+// ── Time formatting ──────────────────────────────────────────────────────────
+function formatEastern(ts) {
+  const d = new Date(ts * 1000);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "short", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    timeZoneName: "short",
+  }).format(d);
+}
+function humaniseAge(ts) {
+  const secs = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) {
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+    return m ? `${h}h ${m}m ago` : `${h}h ago`;
+  }
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+// ── Data fetch (paginated past PostgREST's 1000-row default cap) ────────────
+const PAGE_SIZE = 1000;
+async function fetchArticles(hours) {
+  const cutoff = Math.floor(Date.now() / 1000) - hours * 3600;
+  let out = [];
+  let start = 0;
+  while (true) {
+    const { data, error } = await sb
+      .from("articles")
+      .select("*")
+      .gte("published_ts", cutoff)
+      .order("published_ts", { ascending: false })
+      .range(start, start + PAGE_SIZE - 1);
+    if (error) throw error;
+    out = out.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+  return out;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
+
+function renderChips(rows) {
+  const counts = {};
+  for (const r of rows) counts[r.category || "other"] = (counts[r.category || "other"] || 0) + 1;
+  const cats = [...CATEGORY_ORDER.filter(c => counts[c]),
+                ...Object.keys(counts).filter(c => !CATEGORY_ORDER.includes(c)).sort()];
+
+  const chipsEl = document.getElementById("categoryChips");
+  chipsEl.innerHTML = "";
+  const allChip = document.createElement("span");
+  allChip.className = "chip" + (activeCategory === null ? " active" : "");
+  allChip.textContent = `All (${rows.length})`;
+  allChip.onclick = () => { activeCategory = null; render(); };
+  chipsEl.appendChild(allChip);
+
+  for (const cat of cats) {
+    const chip = document.createElement("span");
+    chip.className = "chip" + (activeCategory === cat ? " active" : "");
+    chip.textContent = `${CATEGORY_LABELS[cat] || cat} (${counts[cat]})`;
+    chip.onclick = () => { activeCategory = (activeCategory === cat ? null : cat); render(); };
+    chipsEl.appendChild(chip);
+  }
+}
+
+function render() {
+  let rows = allRows;
+  if (activeCategory) rows = rows.filter(r => (r.category || "other") === activeCategory);
+  if (searchTerm) {
+    const t = searchTerm.toLowerCase();
+    rows = rows.filter(r =>
+      (r.title || "").toLowerCase().includes(t) ||
+      (r.summary || "").toLowerCase().includes(t) ||
+      (r.source || "").toLowerCase().includes(t)
+    );
+  }
+
+  renderChips(allRows);
+
+  const main = document.getElementById("main");
+  if (!rows.length) {
+    main.innerHTML = '<div class="empty">No matching headlines.</div>';
+    return;
+  }
+
+  const groups = new Map();
+  for (const r of rows) {
+    const cat = r.category || "other";
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push(r);
+  }
+  const orderedCats = [...CATEGORY_ORDER.filter(c => groups.has(c)),
+                       ...[...groups.keys()].filter(c => !CATEGORY_ORDER.includes(c)).sort()];
+
+  let html = "";
+  for (const cat of orderedCats) {
+    const items = groups.get(cat);
+    const label = CATEGORY_LABELS[cat] || cat.replace(/-/g, " ");
+    const color = `var(--c-${cat}, var(--c-other))`;
+    html += `<div class="section-heading">
+      <span class="dot" style="background:${color}"></span>
+      <h2>${escapeHtml(label)}</h2>
+      <span class="count">${items.length}</span>
+    </div>`;
+    for (const r of items) {
+      const t = formatEastern(r.published_ts);
+      const age = humaniseAge(r.published_ts);
+      const src = escapeHtml(r.source || "");
+      const pub = r.publisher ? ` · ${escapeHtml(r.publisher)}` : "";
+      const title = escapeHtml(r.title || "");
+      const link = r.link ? r.link.replace(/"/g, "&quot;") : "";
+      const headline = link ? `<a href="${link}" target="_blank" rel="noopener">${title}</a>` : title;
+      const summary = r.summary ? `<div class="summary">${escapeHtml(r.summary)}</div>` : "";
+      html += `<div class="item" style="border-left-color:${color}">
+        <div class="meta"><span class="src">${src}</span>${pub} · ${t} (${age})</div>
+        <div class="headline">${headline}</div>
+        ${summary}
+      </div>`;
+    }
+  }
+  main.innerHTML = html;
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+const statusEl = document.getElementById("status");
+
+async function load() {
+  statusEl.className = "status";
+  statusEl.innerHTML = '<span class="dot"></span>Loading…';
+  const main = document.getElementById("main");
+  main.innerHTML = '<div class="loading">Loading headlines…</div>';
+
+  const hours = parseInt(document.getElementById("hoursSelect").value, 10);
+  try {
+    allRows = await fetchArticles(hours);
+    render();
+    const now = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", hour: "2-digit", minute: "2-digit",
+      hour12: true, timeZoneName: "short",
+    }).format(new Date());
+    statusEl.innerHTML = `<span class="dot"></span>${allRows.length} headlines · updated ${now}`;
+  } catch (err) {
+    statusEl.className = "status error";
+    statusEl.innerHTML = '<span class="dot"></span>Error loading data';
+    main.innerHTML = `<div class="error-box">
+      <strong>Couldn't load headlines.</strong><br>
+      ${escapeHtml(err.message || String(err))}<br><br>
+      If this is your first time opening this page, check that: the
+      <code>SUPABASE_ANON_KEY</code> in this file has been filled in, and the
+      <code>"public read access"</code> RLS policy from <code>schema.sql</code>
+      has been run in your Supabase SQL editor.
+    </div>`;
+  }
+}
+
+document.getElementById("hoursSelect").addEventListener("change", load);
+document.getElementById("refreshBtn").addEventListener("click", load);
+document.getElementById("searchBox").addEventListener("input", (e) => {
+  searchTerm = e.target.value.trim();
+  render();
+});
+
+load();
+</script>
+</body>
+</html>

@@ -40,3 +40,12 @@ $$;
 -- means the table stays private if the anon/public key is ever used against
 -- it (e.g. if you later build a public-facing app on the same project).
 alter table articles enable row level security;
+
+-- The web dashboard (docs/index.html) reads with the anon/publishable key
+-- directly from the browser, so it needs an explicit read-only grant. Writes
+-- (insert/update/delete) are still impossible for anon — only service_role
+-- (used by the scraper, never exposed to a browser) can write.
+create policy "public read access" on articles
+    for select
+    to anon
+    using (true);

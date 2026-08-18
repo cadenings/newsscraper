@@ -1,37 +1,37 @@
 # Last successful run
 
-2026-08-17 12:37 UTC
+2026-08-18 12:38 UTC
 
 ```
 Supabase project: https://rdbacvpzilkrdfmzbeuw.supabase.co
-Total articles stored : 12028
-From the last 24h     : 611
+Total articles stored : 12657
+From the last 24h     : 629
 Oldest published      : 2026-07-28T07:19:06Z
-Newest published      : 2026-08-17T12:34:07Z
+Newest published      : 2026-08-18T12:34:49Z
 
 By source:
-  1776  Wires: Trade & tariffs
-  1678  Wires: Inflation
-  1613  Wires: Jobs & growth
-  1578  Wires: Fed & rates
-  1496  Wires: Oil & energy
-   829  Wires: Bonds & yields
-   522  Yahoo Finance
-   463  CNBC Top News
-   437  Wires: Asia & China economy
-   360  The Guardian Business
-   311  CNA Business
-   237  NYT Business
-   208  BBC Business
-   194  FT Home
-   182  MarketWatch Top Stories
+  1846  Wires: Trade & tariffs
+  1756  Wires: Inflation
+  1690  Wires: Jobs & growth
+  1666  Wires: Fed & rates
+  1565  Wires: Oil & energy
+   905  Wires: Bonds & yields
+   566  Yahoo Finance
+   488  CNBC Top News
+   467  Wires: Asia & China economy
+   373  The Guardian Business
+   328  CNA Business
+   246  NYT Business
+   221  BBC Business
+   203  FT Home
+   190  MarketWatch Top Stories
     37  Bank of Japan
     28  CNBC Finance
+    19  The Economist: Finance & Economics
     18  NYT Economy
-    18  The Economist: Finance & Economics
-    12  CNBC Economy
+    13  CNBC Economy
      9  Federal Reserve
-     7  EIA Today in Energy
+     8  EIA Today in Energy
      6  ECB Press
      5  Bank of England
      3  BEA (US GDP/PCE)
